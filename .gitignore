@@ -47,6 +47,7 @@ frontend/*.local
 games.db
 test_games.db
 users.db
+activities.db
 
 
 modules/module-04/*
