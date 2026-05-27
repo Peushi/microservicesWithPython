@@ -3,7 +3,11 @@ uvicorn[standard]
 sqlalchemy
 alembic
 pydantic
+pydantic-settings
 python-dotenv
 aiosqlite
 httpx
 pytest
+asyncpg
+redis
+python-jose[cryptography]
