@@ -38,7 +38,7 @@ activities.db
 games.db
 test_games.db
 users.db
-
+notifications.db
 # Frontend
 dist/
 frontend/dist
