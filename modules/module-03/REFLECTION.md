@@ -19,6 +19,7 @@ All client requests now go through the gateway. No client ever calls a service d
 Think about what the client would need to know and manage if it talked to each service on its own port.
 
 > *Your answer:*
+The gateway gives the client one single entry point. Without it, the client would need to know different ports and URLs for every service. The gateway makes the system easier to manage and hides the internal service structure.
 
 ---
 
@@ -31,6 +32,8 @@ The activity-service makes two outbound calls: one to validate the user (with re
 What is the consequence for the user in each case if the downstream service is unavailable?
 
 > *Your answer:*
+User validation is important because we should not create activities for users that do not exist. That is why it retries once before failing. Game data is only extra information, so if game-service is down, the activity can still be saved with `"game": null`.
+
 
 ---
 
@@ -43,7 +46,7 @@ Every time a client creates an activity, three services are involved synchronous
 What happens to the user experience if the slowest service in the chain takes 3 seconds to respond?
 
 > *Your answer:*
-
+The risk is that one slow service slows down the whole request. If one service takes 3 seconds, the user waits longer for the full response. If a service goes down, some requests may fail completely.
 ---
 
 *Keep this file. You will refer back to it during the oral presentation.*

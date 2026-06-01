@@ -49,7 +49,11 @@ frontend/dist
 frontend/dist-ssr
 frontend/*.local
 
-
+# database
+games.db
+test_games.db
+users.db
+activities.db
 
 
 
