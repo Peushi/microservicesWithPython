@@ -1,37 +1,42 @@
-# Application layer — Pydantic DTOs.
+# Infrastructure layer — raw database queries.
 #
-# Define the shapes of data coming IN and going OUT of the API.
+# Implement these four functions. Each takes `db: Session` as its first argument.
+# No business logic here — only ORM queries.
 #
-# This file should define:
-# - GameCreate  — fields accepted when creating a game
-#                 (title, genre, platform required; release_year and cover_url optional)
-# - GameOut     — fields returned to the caller (includes id and created_at)
-#                 add model_config = {"from_attributes": True}
-# - GameList    — paginated envelope: { items, total, limit, offset }
+# - create_game(db, data) -> Game
+# - get_game(db, game_id) -> Game | None
+# - list_games(db, limit, offset) -> tuple[list[Game], int]
+# - search_games(db, q, limit, offset) -> tuple[list[Game], int]
+#   Hint: filter by title using .ilike(f"%{q}%") for case-insensitive search
 
-from pydantic import BaseModel
-from datetime import datetime
+from sqlalchemy.orm import Session
+from app.models import Game
+from app.schemas import GameCreate
 
-class GameCreate(BaseModel):
-    title: str
-    genre: str
-    platform: str
-    release_year: int | None = None
-    cover_url: str | None = None
 
-class GameOut(BaseModel):
-    id: str
-    title: str
-    genre: str
-    platform: str
-    release_year: int | None
-    cover_url: str | None
-    created_at: datetime
+def create_game(db: Session, data: GameCreate) -> Game:
+    game = Game(
+        title=data.title,
+        genre=data.genre,
+        platform=data.platform,
+        release_year=data.release_year,
+        cover_url=data.cover_url,
+    )
+    db.add(game)
+    db.commit()
+    db.refresh(game)
+    return game
 
-    model_config = {"from_attributes": True}
 
-class GameList(BaseModel):
-    items: list[GameOut]
-    total: int
-    limit: int
-    offset: int
+def get_game(db: Session, game_id: str) -> Game | None:
+    return db.query(Game).filter(Game.id == game_id).first()
+
+
+def list_games(db: Session, limit: int = 20, offset: int = 0) -> tuple[list[Game], int]:
+    total = db.query(Game).count()
+    games = db.query(Game).offset(offset).limit(limit).all()
+    return games, total
+
+
+def search_games(db: Session, q: str) -> list[Game]:
+    return db.query(Game).filter(Game.title.ilike(f"%{q}%")).all()
