@@ -44,6 +44,15 @@ frontend/dist-ssr
 frontend/*.local
 
 
+#db
+user-service.db
+users.db
+activities.db
+games.db
+test_games.db
+logging.db
+notifications.db
+
 
 
 

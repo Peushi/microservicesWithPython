@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import Base, engine, get_db
 from app import repository, schemas
+from app.infrastructure.rabbitmq_publisher import publish_activity_event
 
 Base.metadata.create_all(bind=engine)
 
@@ -39,7 +40,19 @@ async def validate_user(user_id: str) -> None:
     Use `async with httpx.AsyncClient(timeout=5.0) as client:` for HTTP calls.
     This call is CRITICAL — the request must not proceed if validation fails.
     """
-    raise NotImplementedError
+    for attempt in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{settings.user_service_url}/v1/users/{user_id}")
+            if response.status_code == 200:
+                return
+            elif response.status_code == 404:
+                raise HTTPException(status_code=404, detail="User not found")
+            else:
+                raise HTTPException(status_code=503, detail="user-service unavailable")
+        except httpx.RequestError:
+            if attempt == 1:
+                raise HTTPException(status_code=503, detail="user-service unavailable")
 
 
 async def fetch_game(game_id: str) -> dict | None:
@@ -56,7 +69,14 @@ async def fetch_game(game_id: str) -> dict | None:
     Graceful degradation is the goal: the response will include "game": null
     when game-service is unreachable.
     """
-    raise NotImplementedError
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{settings.game_service_url}/v1/games/{game_id}")
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except httpx.RequestError:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +93,13 @@ async def create_activity(data: schemas.ActivityCreate, db: Session = Depends(ge
     await validate_user(data.user_id)
     activity = repository.create_activity(db, data)
     game_data = await fetch_game(activity.game_id)
+    game_title = game_data["title"] if game_data else None
+    await publish_activity_event(
+        user_id=activity.user_id,
+        game_id=activity.game_id,
+        action=activity.action,
+        game_title=game_title,
+    )
     return {
         "id": activity.id,
         "user_id": activity.user_id,
