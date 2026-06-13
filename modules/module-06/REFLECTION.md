@@ -19,6 +19,7 @@ The gateway now validates every JWT before forwarding a request. Individual serv
 Think about what happens when you need to rotate the secret key, or add a new service to the system.
 
 > *Your answer:*
+If every service validates tokens on its own, you have to update all of them every time the secret key changes or you add a new service. With the gateway doing it centrally, there's one place to change and everything else just works. It also means new services don't need to care about auth at all the gateway handles it before the request even reaches them.
 
 ---
 
@@ -31,6 +32,7 @@ When activity-service calls user-service internally, it uses a Machine-to-Machin
 What would break, or what door would you accidentally leave open, if services passed user tokens between themselves?
 
 > *Your answer:*
+If activity-service reuses the user's token, it's acting as that user internally which it shouldn't be. The user didn't ask activity-service to call user-service on their behalf. It also means if a user's token gets compromised, it could be used to make internal service calls. M2M tokens are scoped to the service, not the user, so the permissions stay separate.
 
 ---
 
@@ -43,6 +45,7 @@ The gateway and the auth-service share the same `SECRET_KEY` to verify tokens wi
 And what would the alternative look like — verifying tokens by calling auth-service on every request instead? What does that cost you?
 
 > *Your answer:*
+If the secret key leaks, anyone can forge valid tokens and get through the gateway. That's a big deal. But the alternative calling auth-service on every single request to verify tokens adds a network hop to every request, and if auth-service goes down, the whole system stops working. Sharing the key is faster and more resilient, but you have to keep it safe.
 
 ---
 

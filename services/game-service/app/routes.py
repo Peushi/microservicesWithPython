@@ -11,13 +11,15 @@
 # and return a 422 Unprocessable Entity error.
 #
 # Module 5 — CQRS: also add this endpoint (declare it before /{game_id}):
-# - GET /v1/games/{game_id}/summary -> read from Redis cache (404 if not cached) 
+# - GET /v1/games/{game_id}/summary -> read from Redis cache (404 if not cached)
 #   from app.infrastructure.cache import get_game_summary
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app import service, schemas
+from app import service, schemas, repository
 from app.infrastructure.cache import get_game_summary
+from app.security import require_admin
 
 router = APIRouter(prefix="/v1/games", tags=["games"])
 
@@ -43,6 +45,15 @@ def get_summary(game_id: str):
     if summary is None:
         raise HTTPException(status_code=404, detail="Summary not found in cache")
     return summary
+
+
+@router.delete("/{game_id}", dependencies=[Depends(require_admin)], status_code=204)
+def delete_game(game_id: str, db: Session = Depends(get_db)):
+    game = repository.get_game(db, game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    db.delete(game)
+    db.commit()
 
 
 @router.get("/{game_id}", response_model=schemas.GameOut)
